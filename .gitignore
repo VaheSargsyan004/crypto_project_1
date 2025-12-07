@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # JetBrains IDEs
 .idea/
 
@@ -73,3 +74,6 @@ Thumbs.db
 *~
 *.swp
 *.tmp
+=======
+.idea
+>>>>>>> 6190be1 (Adding .gitignore)
