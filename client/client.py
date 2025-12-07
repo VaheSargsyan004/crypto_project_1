@@ -1,4 +1,8 @@
-import socket, json, os
+import socket
+import json
+import os
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography import x509
 from utils.crypto_utils import load_public, verify_signature
 from utils.aes_utils import aes_encrypt, aes_decrypt
 
@@ -6,8 +10,12 @@ HOST = "127.0.0.1"
 PORT = 5000
 
 def verify_certificate(cert):
-    ca_pub = load_public("ca/ca_public_key.pem")
+    # Load CA certificate and extract public key
+    with open("../ca/ca_cert.pem", "rb") as f:
+        ca_cert = x509.load_pem_x509_certificate(f.read())
+    ca_pub = ca_cert.public_key()
 
+    # Prepare payload for signature verification
     payload = json.dumps({
         "server": cert["server"],
         "public_key": cert["public_key"],
@@ -22,33 +30,35 @@ def start_client():
     s = socket.socket()
     s.connect((HOST, PORT))
 
-    cert = json.loads(s.recv(4096).decode())
-    print("Certificate received.")
+    # Receive server certificate (JSON string)
+    cert_json = s.recv(4096).decode()
+    cert = json.loads(cert_json)
+    print("[CLIENT] Certificate received.")
 
+    # Verify the certificate using CA public key
     if not verify_certificate(cert):
         print("❌ Certificate verification failed.")
         return
+    print("✔️ Certificate verified!")
 
-    print("✔️ Certificate is valid!")
-
+    # Load server public key from PEM string
     server_pub = load_public(cert["public_key"].encode())
 
-    # Step 2 — Generate AES session key
+    # Generate AES session key (256-bit)
     session_key = os.urandom(32)
-    encrypted_key = server_pub.encrypt(
-        session_key,
-        padding.PKCS1v15()
-    )
+    encrypted_key = server_pub.encrypt(session_key, padding.PKCS1v15())
     s.send(encrypted_key)
+    print("[CLIENT] AES session key sent.")
 
-    print("AES session key sent.")
-
-    # Step 3 — Secure messaging
+    # Secure messaging loop
     while True:
         msg = input("You: ").encode()
+        if not msg:
+            continue
         s.send(aes_encrypt(session_key, msg))
 
         resp = s.recv(4096)
         print("Server:", aes_decrypt(session_key, resp).decode())
 
-start_client()
+if __name__ == "__main__":
+    start_client()

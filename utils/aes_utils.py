@@ -1,25 +1,13 @@
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import os
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 
 def aes_encrypt(key, plaintext):
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    encryptor = cipher.encryptor()
-
-    # PKCS7 padding
-    pad_len = 16 - len(plaintext) % 16
-    plaintext += bytes([pad_len]) * pad_len
-
-    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
-    return iv + ciphertext
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(plaintext, AES.block_size))
+    return cipher.iv + ct_bytes
 
 def aes_decrypt(key, ciphertext):
     iv = ciphertext[:16]
-    ciphertext = ciphertext[16:]
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    decryptor = cipher.decryptor()
-
-    padded = decryptor.update(ciphertext) + decryptor.finalize()
-
-    pad_len = padded[-1]
-    return padded[:-pad_len]
+    ct = ciphertext[16:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    return unpad(cipher.decrypt(ct), AES.block_size)
