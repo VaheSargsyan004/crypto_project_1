@@ -1,0 +1,75 @@
+# JetBrains IDEs
+.idea/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+venv.bak/
+.env
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing / coverage / caches
+.coverage
+coverage.xml
+htmlcov/
+**/__pyache__/
+**/*.pem
+.tox/
+.nox/
+.pytest_cache/
+
+# Type checkers / linters
+.mypy_cache/
+.pyright/
+.pyre/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter
+.ipynb_checkpoints
+
+# SQLite and DB files
+*.sqlite3
+*.db
+
+# Keys, certs, secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+.env.local
+.env.*.local
+
+# IDE / editor
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor swap/temp files
+*~
+*.swp
+*.tmp
