@@ -52,23 +52,27 @@ def create_server_cert():
                                          serialization.PrivateFormat.TraditionalOpenSSL,
                                          serialization.NoEncryption()))
 
-    server_cert_json = {
-        "server": "my-server",
-        "public_key": server_key.public_key().public_bytes(
-            serialization.Encoding.PEM,
-            serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode(),
-        "expires": "2026-12-31"
-    }
+    server_subject = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "AM"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Yerevan"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, "Yerevan"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Vahe Server"),
+        x509.NameAttribute(NameOID.COMMON_NAME, "my-server"),
+    ])
 
-    # Sign payload with CA
-    import json
-    payload_bytes = json.dumps(server_cert_json).encode()
-    signature = sign_data(ca_key, payload_bytes)
-    server_cert_json["signature"] = signature.hex()
+    server_cert = (
+        x509.CertificateBuilder()
+        .subject_name(server_subject)
+        .issuer_name(ca_cert.subject)
+        .public_key(server_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.utcnow())
+        .not_valid_after(datetime.utcnow() + timedelta(days=365))
+        .sign(ca_key, hashes.SHA256())
+    )
 
-    with open(os.path.join(SERVER_DIR, "server_cert.pem"), "w") as f:
-        f.write(json.dumps(server_cert_json))
+    with open("../server/server_cert.pem", "wb") as f:
+        f.write(server_cert.public_bytes(serialization.Encoding.PEM))
 
     print("[✓] Server certificate generated!")
 
