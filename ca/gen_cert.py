@@ -1,18 +1,31 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization, hashes
 
+# Add project root to path
 BASE = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.join(BASE, "..")
+sys.path.insert(0, PROJECT_ROOT)
+
+from utils.crypto_utils import save_cert_info
+
+
 CERT_DIR = BASE
 SERVER_DIR = os.path.join(BASE, "..", "server")
 os.makedirs(SERVER_DIR, exist_ok=True)
 
 def create_ca():
+    # Create certificates directory
+    certs_dir = os.path.join(CERT_DIR, "certificates")
+    os.makedirs(certs_dir, exist_ok=True)
+    
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    with open(os.path.join(CERT_DIR, "ca_key.pem"), "wb") as f:
+    ca_key_path = os.path.join(certs_dir, "ca_key.pem")
+    with open(ca_key_path, "wb") as f:
         f.write(key.private_bytes(serialization.Encoding.PEM,
                                   serialization.PrivateFormat.TraditionalOpenSSL,
                                   serialization.NoEncryption()))
@@ -33,21 +46,33 @@ def create_ca():
             .add_extension(x509.BasicConstraints(ca=True, path_length=None), True)
             .sign(key, hashes.SHA256()))
 
-    with open(os.path.join(CERT_DIR, "ca_cert.pem"), "wb") as f:
+    ca_cert_path = os.path.join(certs_dir, "ca_cert.pem")
+    
+    with open(ca_cert_path, "wb") as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
-    print("[✓] CA created successfully!")
+    json_path = save_cert_info(ca_cert_path, ca_key_path, CERT_DIR, "ca")
+    print(f"[✓] CA created successfully!")
+    print(f"[✓] Certificate and key saved to: {certs_dir}")
+    print(f"[✓] Certificate info saved to: {json_path}")
 
 def create_server_cert():
     from utils.crypto_utils import sign_data
 
-    with open(os.path.join(CERT_DIR, "ca_key.pem"), "rb") as f:
+    # Load CA key and cert from certificates directory
+    ca_certs_dir = os.path.join(CERT_DIR, "certificates")
+    with open(os.path.join(ca_certs_dir, "ca_key.pem"), "rb") as f:
         ca_key = serialization.load_pem_private_key(f.read(), None)
-    with open(os.path.join(CERT_DIR, "ca_cert.pem"), "rb") as f:
+    with open(os.path.join(ca_certs_dir, "ca_cert.pem"), "rb") as f:
         ca_cert = x509.load_pem_x509_certificate(f.read())
 
+    # Create server certificates directory
+    server_certs_dir = os.path.join(SERVER_DIR, "certificates")
+    os.makedirs(server_certs_dir, exist_ok=True)
+
     server_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    with open(os.path.join(SERVER_DIR, "server_key.pem"), "wb") as f:
+    server_key_path = os.path.join(server_certs_dir, "server_key.pem")
+    with open(server_key_path, "wb") as f:
         f.write(server_key.private_bytes(serialization.Encoding.PEM,
                                          serialization.PrivateFormat.TraditionalOpenSSL,
                                          serialization.NoEncryption()))
@@ -71,10 +96,15 @@ def create_server_cert():
         .sign(ca_key, hashes.SHA256())
     )
 
-    with open("../server/server_cert.pem", "wb") as f:
+    server_cert_path = os.path.join(server_certs_dir, "server_cert.pem")
+    
+    with open(server_cert_path, "wb") as f:
         f.write(server_cert.public_bytes(serialization.Encoding.PEM))
 
-    print("[✓] Server certificate generated!")
+    json_path = save_cert_info(server_cert_path, server_key_path, SERVER_DIR, "server")
+    print(f"[✓] Server certificate generated!")
+    print(f"[✓] Certificate and key saved to: {server_certs_dir}")
+    print(f"[✓] Certificate info saved to: {json_path}")
 
 if __name__ == "__main__":
     print("1. Create CA\n2. Create Server Certificate")

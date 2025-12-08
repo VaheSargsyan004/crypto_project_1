@@ -1,8 +1,16 @@
 import socket
 import json
 import os
+import sys
+from datetime import datetime
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography import x509
+
+# Add project root to path
+BASE_DIR = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.join(BASE_DIR, "..")
+sys.path.insert(0, PROJECT_ROOT)
+
 from utils.crypto_utils import load_public, verify_signature
 from utils.aes_utils import aes_encrypt, aes_decrypt
 
@@ -11,7 +19,8 @@ PORT = 5000
 
 def verify_certificate(cert):
     # Load CA certificate and extract public key
-    with open("../ca/ca_cert.pem", "rb") as f:
+    ca_cert_path = os.path.join(PROJECT_ROOT, "ca", "certificates", "ca_cert.pem")
+    with open(ca_cert_path, "rb") as f:
         ca_cert = x509.load_pem_x509_certificate(f.read())
     ca_pub = ca_cert.public_key()
 
@@ -34,6 +43,17 @@ def start_client():
     cert_json = s.recv(4096).decode()
     cert = json.loads(cert_json)
     print("[CLIENT] Certificate received.")
+
+    # Save received certificate info to JSON
+    cert_dir = os.path.join(BASE_DIR, "certificates")
+    os.makedirs(cert_dir, exist_ok=True)
+    cert_info = {
+        "name": "received_server_cert",
+        "received_at": datetime.now().isoformat(),
+        "certificate": cert
+    }
+    with open(os.path.join(cert_dir, "received_server_cert_info.json"), "w") as f:
+        json.dump(cert_info, f, indent=2)
 
     # Verify the certificate using CA public key
     if not verify_certificate(cert):
